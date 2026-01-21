@@ -4,19 +4,12 @@ require('dotenv').config();
 
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-
-
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rinnvkt.mongodb.net/?appName=Cluster0`;
 
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -25,72 +18,66 @@ const client = new MongoClient(uri, {
     }
 });
 
-async function run() {
-    try {
-        // Connect the client to the server	(optional starting in v4.7)
+let carCollection;
+
+// Connect to MongoDB once
+async function connectDB() {
+    if (!carCollection) {
         await client.connect();
-
-        const carCollection = client.db('carvanaXDB').collection('cars');
-
-
-        // get car data
-        app.get('/cars', async (req, res) => {
-            const result = await carCollection.find().toArray();
-            res.send(result);
-        })
-
-        // get a single car data
-        app.get('/cars/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) };
-            const result = await carCollection.findOne(query);
-            res.send(result);
-        })
-
-        // post car data
-        app.post('/cars', async (req, res) => {
-            const newCar = req.body;
-            const result = await carCollection.insertOne(newCar);
-            res.send(result);
-
-        })
-
-        // update a car
-        app.put('/cars/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = { _id: new ObjectId(id) };
-            const options = { upsert: true };
-            const updatedCar = req.body;
-            const car = {
-                $set: updatedCar
-            };
-            const result = await carCollection.updateOne(filter, car, options);
-            res.send(result);
-        })
-
-        // delete a car
-        app.delete('/cars/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) };
-            const result = await carCollection.deleteOne(query);
-            res.send(result);
-        })
-
-        // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } finally {
-        // Ensures that the client will close when you finish/error
-        // await client.close();
+        carCollection = client.db('carvanaXDB').collection('cars');
     }
 }
-run().catch(console.dir);
 
+// get car data
+app.get('/cars', async (req, res) => {
+    await connectDB();
+    const result = await carCollection.find().toArray();
+    res.send(result);
+});
+
+// get a single car data
+app.get('/cars/:id', async (req, res) => {
+    await connectDB();
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await carCollection.findOne(query);
+    res.send(result);
+});
+
+// post car data
+app.post('/cars', async (req, res) => {
+    await connectDB();
+    const newCar = req.body;
+    const result = await carCollection.insertOne(newCar);
+    res.send(result);
+});
+
+// update a car
+app.put('/cars/:id', async (req, res) => {
+    await connectDB();
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const options = { upsert: true };
+    const updatedCar = req.body;
+    const car = {
+        $set: updatedCar
+    };
+    const result = await carCollection.updateOne(filter, car, options);
+    res.send(result);
+});
+
+// delete a car
+app.delete('/cars/:id', async (req, res) => {
+    await connectDB();
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await carCollection.deleteOne(query);
+    res.send(result);
+});
 
 app.get('/', (req, res) => {
     res.send('CarvanaX Server is running');
-})
+});
 
-app.listen(port, () => {
-    console.log(`Server is listening on port ${port}`);
-})
+// Export for Vercel
+module.exports = app;
